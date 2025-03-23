@@ -2,36 +2,70 @@ let balance = 0;
 const balanceElement = document.getElementById("balance");
 const transactionList = document.getElementById("transaction-list");
 
+document.addEventListener("DOMContentLoaded", loadTransactions);
+
 function addTransaction() {
     const desc = document.getElementById("desc").value;
     const amount = parseFloat(document.getElementById("amount").value);
+    const date = document.getElementById("date").value;  // 📅 Get selected date
     const type = document.getElementById("type").value;
 
-    if (desc === "" || isNaN(amount)) {
+    if (desc === "" || isNaN(amount) || date === "") {
         alert("Please enter valid details.");
         return;
     }
 
-    // Update balance
-    balance += type === "income" ? amount : -amount;
-    balanceElement.innerText = balance;
+    const transaction = {
+        id: Date.now(),
+        desc,
+        amount,
+        date,  // 📅 Store the selected date
+        type
+    };
 
-    // Create transaction entry
-    const li = document.createElement("li");
-    li.innerHTML = `${desc} <span>${type === "income" ? "+" : "-"}$${amount}</span> 
-                    <button onclick="deleteTransaction(this, ${amount}, '${type}')">❌</button>`;
-    transactionList.appendChild(li);
+    saveTransaction(transaction);
+    renderTransaction(transaction);
+    updateBalance();
 
-    // Clear input fields
     document.getElementById("desc").value = "";
     document.getElementById("amount").value = "";
+    document.getElementById("date").value = "";  // 📅 Clear date input
 }
 
-function deleteTransaction(element, amount, type) {
-    // Update balance when deleting
-    balance -= type === "income" ? amount : -amount;
-    balanceElement.innerText = balance;
+function saveTransaction(transaction) {
+    let transactions = JSON.parse(localStorage.getItem("transactions")) || [];
+    transactions.push(transaction);
+    localStorage.setItem("transactions", JSON.stringify(transactions));
+}
 
-    // Remove transaction from UI
-    element.parentElement.remove();
+function loadTransactions() {
+    let transactions = JSON.parse(localStorage.getItem("transactions")) || [];
+    transactions.forEach(renderTransaction);
+    updateBalance();
+}
+
+function renderTransaction(transaction) {
+    const li = document.createElement("li");
+    li.innerHTML = `${transaction.desc} <span>${transaction.type === "income" ? "+" : "-"}$${transaction.amount}</span> 
+                    <small>${transaction.date}</small> <!-- 📅 Show Date -->
+                    <button onclick="deleteTransaction(${transaction.id})">❌</button>`;
+    li.setAttribute("data-id", transaction.id);
+    transactionList.appendChild(li);
+}
+
+function updateBalance() {
+    let transactions = JSON.parse(localStorage.getItem("transactions")) || [];
+    balance = transactions.reduce((total, trans) => {
+        return trans.type === "income" ? total + trans.amount : total - trans.amount;
+    }, 0);
+    balanceElement.innerText = balance;
+}
+
+function deleteTransaction(id) {
+    let transactions = JSON.parse(localStorage.getItem("transactions")) || [];
+    transactions = transactions.filter(trans => trans.id !== id);
+    localStorage.setItem("transactions", JSON.stringify(transactions));
+
+    document.querySelector(`[data-id="${id}"]`).remove();
+    updateBalance();
 }
